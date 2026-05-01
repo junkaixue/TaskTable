@@ -150,6 +150,11 @@ header h1 {
     font-weight: bold;
 }
 
+.task-item .task-dates .due-urgent {
+    color: #f1c40f;
+    font-weight: bold;
+}
+
 .task-item .task-dates .due-soon {
     color: #f39c12;
     font-weight: bold;
@@ -205,6 +210,38 @@ header h1 {
 
 .task-urls a:hover {
     text-decoration: underline;
+}
+
+.url-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 6px;
+    align-items: center;
+}
+
+.url-row .url-label {
+    width: 30%;
+}
+
+.url-row .url-value {
+    flex: 1;
+}
+
+.url-row .btn-remove-url {
+    padding: 4px 8px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+#task-urls-container {
+    margin-bottom: 8px;
+}
+
+#btn-add-url {
+    margin-bottom: 15px;
 }
 
 .task-item .task-actions {

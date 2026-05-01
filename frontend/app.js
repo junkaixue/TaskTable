@@ -76,10 +76,27 @@ function renderTaskItem(task, showDoneBtn) {
         dateHtml += `<span>Follow-up: ${formatDate(task.follow_up_date)}</span> `;
     }
     if (task.due_date) {
+        const dueTime = new Date(task.due_date + 'T00:00:00').getTime();
+        const todayTime = new Date(today + 'T00:00:00').getTime();
+        const daysLeft = Math.ceil((dueTime - todayTime) / 86400000);
         let cls = '';
-        if (task.due_date < today) cls = 'overdue';
-        else if (task.due_date <= new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]) cls = 'due-soon';
-        dateHtml += `<span class="${cls}">Due: ${formatDate(task.due_date)}</span>`;
+        let daysText = '';
+        if (daysLeft < 0) {
+            cls = 'overdue';
+            daysText = ` (${Math.abs(daysLeft)}d overdue)`;
+        } else if (daysLeft === 0) {
+            cls = 'overdue';
+            daysText = ' (due today)';
+        } else if (daysLeft <= 2) {
+            cls = 'due-urgent';
+            daysText = ` (${daysLeft}d left)`;
+        } else if (daysLeft <= 5) {
+            cls = 'due-soon';
+            daysText = ` (${daysLeft}d left)`;
+        } else {
+            daysText = ` (${daysLeft}d left)`;
+        }
+        dateHtml += `<span class="${cls}">Due: ${formatDate(task.due_date)}${daysText}</span>`;
     }
 
     const priorityHtml = `<span class="priority-badge priority-${task.priority}">${PRIORITY_LABELS[task.priority]}</span>`;
@@ -93,9 +110,10 @@ function renderTaskItem(task, showDoneBtn) {
 
     let urlsHtml = '';
     if (task.urls && task.urls.length > 0 && task.urls[0] !== '') {
-        urlsHtml = '<div class="task-urls">' + task.urls.map(url =>
-            `<a href="${escapeHtml(url.trim())}" target="_blank" rel="noopener">${escapeHtml(url.trim())}</a>`
-        ).join('') + '</div>';
+        urlsHtml = '<div class="task-urls">' + task.urls.map(entry => {
+            const [label, url] = parseUrlEntry(entry);
+            return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`;
+        }).join('') + '</div>';
     }
 
     const editBtn = `<button class="btn btn-edit" onclick="editTask(${task.id})">Edit</button>`;
@@ -123,6 +141,40 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function parseUrlEntry(entry) {
+    const idx = entry.indexOf('|');
+    if (idx > 0) {
+        return [entry.substring(0, idx).trim(), entry.substring(idx + 1).trim()];
+    }
+    return [entry.trim(), entry.trim()];
+}
+
+function addUrlRow(label, url) {
+    const container = document.getElementById('task-urls-container');
+    const row = document.createElement('div');
+    row.className = 'url-row';
+    row.innerHTML = `
+        <input type="text" placeholder="Label" class="url-label" value="${escapeHtml(label || '')}">
+        <input type="text" placeholder="https://..." class="url-value" value="${escapeHtml(url || '')}">
+        <button type="button" class="btn btn-small btn-remove-url">x</button>
+    `;
+    row.querySelector('.btn-remove-url').addEventListener('click', () => row.remove());
+    container.appendChild(row);
+}
+
+function getUrlEntries() {
+    const rows = document.querySelectorAll('#task-urls-container .url-row');
+    const entries = [];
+    rows.forEach(row => {
+        const label = row.querySelector('.url-label').value.trim();
+        const url = row.querySelector('.url-value').value.trim();
+        if (url) {
+            entries.push(label ? `${label}|${url}` : url);
+        }
+    });
+    return entries;
 }
 
 function groupByProject(tasks) {
@@ -207,7 +259,13 @@ function editTask(id) {
     document.getElementById('task-project').value = task.project_id;
     document.getElementById('task-priority').value = task.priority;
     document.getElementById('task-tags').value = (task.tags && task.tags[0] !== '') ? task.tags.join(', ') : '';
-    document.getElementById('task-urls').value = (task.urls && task.urls[0] !== '') ? task.urls.join('\n') : '';
+    document.getElementById('task-urls-container').innerHTML = '';
+    if (task.urls && task.urls.length > 0 && task.urls[0] !== '') {
+        task.urls.forEach(entry => {
+            const [label, url] = parseUrlEntry(entry);
+            addUrlRow(label, url);
+        });
+    }
     document.getElementById('task-follow-up').value = task.follow_up_date || '';
     document.getElementById('task-due-date').value = task.due_date || '';
     document.getElementById('modal-task').style.display = 'flex';
@@ -267,11 +325,14 @@ document.querySelectorAll('.search-bar input').forEach(input => {
 });
 
 // Modal handlers
+document.getElementById('btn-add-url').addEventListener('click', () => addUrlRow('', ''));
+
 document.getElementById('btn-new-task').addEventListener('click', () => {
     document.getElementById('modal-task-title').textContent = 'New Task';
     document.getElementById('btn-submit-task').textContent = 'Save Task';
     document.getElementById('task-edit-id').value = '';
     document.getElementById('form-task').reset();
+    document.getElementById('task-urls-container').innerHTML = '';
     document.getElementById('modal-task').style.display = 'flex';
 });
 
@@ -309,8 +370,7 @@ document.getElementById('form-task').addEventListener('submit', async (e) => {
         return;
     }
 
-    const urlsRaw = document.getElementById('task-urls').value.trim();
-    const urls = urlsRaw ? urlsRaw.split('\n').map(u => u.trim()).filter(u => u) : [];
+    const urls = getUrlEntries();
 
     const payload = {
         body: body,
