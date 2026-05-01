@@ -66,7 +66,7 @@ function formatDate(dateStr) {
     return new Date(dateStr + 'T00:00:00').toLocaleDateString();
 }
 
-const PRIORITY_LABELS = ['P0 Critical', 'P1 High', 'P2 Med-High', 'P3 Medium', 'P4 Low', 'P5 Lowest'];
+const PRIORITY_LABELS = ['0', '1', '2', '3', '4', '5'];
 
 function renderTaskItem(task, showDoneBtn) {
     const today = new Date().toISOString().split('T')[0];
@@ -98,10 +98,10 @@ function renderTaskItem(task, showDoneBtn) {
 
     return `
         <div class="task-item" data-id="${task.id}">
+            ${priorityHtml}
             <div class="task-content">
                 <div class="task-body">${escapeHtml(task.body)}</div>
                 <div class="task-meta">
-                    ${priorityHtml}
                     ${tagsHtml}
                     <span class="task-dates">${dateHtml}</span>
                 </div>

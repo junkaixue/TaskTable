@@ -5,7 +5,13 @@
       "Bash(go get:*)",
       "Bash(go build:*)",
       "Bash(chmod +x /Users/jxue/TaskTable/run.sh)",
-      "Bash(chmod +x /Users/jxue/TaskTable/stop.sh)"
+      "Bash(chmod +x /Users/jxue/TaskTable/stop.sh)",
+      "Bash(sqlite3 tasktable.db \"SELECT count\\(*\\) FROM tasks; SELECT * FROM tasks LIMIT 5;\")",
+      "Bash(lsof -i:8080 2>/dev/null | head -5)",
+      "Bash(curl -s http://localhost:8080/api/tasks?status=pending | python3 -m json.tool | head -30)",
+      "Bash(curl -s 'http://localhost:8080/api/tasks?status=pending')",
+      "Bash(curl -s 'http://localhost:8080/api/tasks/today')",
+      "Bash(lsof -i:3000 2>/dev/null | head -5)"
     ]
   }
 }
