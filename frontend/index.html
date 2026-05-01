@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskTable</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>TaskTable</h1>
+            <button id="btn-new-task" class="btn btn-primary">+ New Task</button>
+        </header>
+
+        <section class="section" id="section-today">
+            <h2>Today Needs to Handle</h2>
+            <div class="search-bar" data-section="today">
+                <input type="text" placeholder="Search content..." class="search-q">
+                <input type="text" placeholder="Tag" class="search-tag">
+                <select class="search-priority">
+                    <option value="">Any Priority</option>
+                    <option value="0">P0 Critical</option>
+                    <option value="1">P1 High</option>
+                    <option value="2">P2 Med-High</option>
+                    <option value="3">P3 Medium</option>
+                    <option value="4">P4 Low</option>
+                    <option value="5">P5 Lowest</option>
+                </select>
+                <input type="date" class="search-from" title="From date">
+                <input type="date" class="search-to" title="To date">
+                <button class="btn btn-small btn-search">Search</button>
+                <button class="btn btn-small btn-clear-search">Clear</button>
+            </div>
+            <div class="task-list" id="today-tasks"></div>
+        </section>
+
+        <section class="section" id="section-pending">
+            <h2>Pending Tasks</h2>
+            <div class="search-bar" data-section="pending">
+                <input type="text" placeholder="Search content..." class="search-q">
+                <input type="text" placeholder="Tag" class="search-tag">
+                <select class="search-priority">
+                    <option value="">Any Priority</option>
+                    <option value="0">P0 Critical</option>
+                    <option value="1">P1 High</option>
+                    <option value="2">P2 Med-High</option>
+                    <option value="3">P3 Medium</option>
+                    <option value="4">P4 Low</option>
+                    <option value="5">P5 Lowest</option>
+                </select>
+                <input type="date" class="search-from" title="From date">
+                <input type="date" class="search-to" title="To date">
+                <button class="btn btn-small btn-search">Search</button>
+                <button class="btn btn-small btn-clear-search">Clear</button>
+            </div>
+            <div class="project-controls">
+                <button id="btn-new-project" class="btn btn-small">+ New Project</button>
+            </div>
+            <div id="pending-tasks"></div>
+        </section>
+
+        <section class="section" id="section-done">
+            <h2>Done Tasks</h2>
+            <div class="search-bar" data-section="done">
+                <input type="text" placeholder="Search content..." class="search-q">
+                <input type="text" placeholder="Tag" class="search-tag">
+                <select class="search-priority">
+                    <option value="">Any Priority</option>
+                    <option value="0">P0 Critical</option>
+                    <option value="1">P1 High</option>
+                    <option value="2">P2 Med-High</option>
+                    <option value="3">P3 Medium</option>
+                    <option value="4">P4 Low</option>
+                    <option value="5">P5 Lowest</option>
+                </select>
+                <input type="date" class="search-from" title="From date">
+                <input type="date" class="search-to" title="To date">
+                <button class="btn btn-small btn-search">Search</button>
+                <button class="btn btn-small btn-clear-search">Clear</button>
+            </div>
+            <div id="done-tasks"></div>
+        </section>
+    </div>
+
+    <!-- Task Modal (create/edit) -->
+    <div class="modal" id="modal-task" style="display:none;">
+        <div class="modal-content">
+            <h3 id="modal-task-title">New Task</h3>
+            <form id="form-task">
+                <input type="hidden" id="task-edit-id">
+
+                <label>Task Description</label>
+                <textarea id="task-body" required placeholder="What needs to be done?"></textarea>
+
+                <label>Project</label>
+                <select id="task-project"></select>
+
+                <label>Priority (0 = highest, 5 = lowest)</label>
+                <select id="task-priority">
+                    <option value="0">0 - Critical</option>
+                    <option value="1">1 - High</option>
+                    <option value="2">2 - Medium-High</option>
+                    <option value="3" selected>3 - Medium</option>
+                    <option value="4">4 - Low</option>
+                    <option value="5">5 - Lowest</option>
+                </select>
+
+                <label>Tags (comma-separated)</label>
+                <input type="text" id="task-tags" placeholder="e.g. bug, frontend, urgent">
+
+                <label>Follow-up Date</label>
+                <input type="date" id="task-follow-up">
+
+                <label>Due Date</label>
+                <input type="date" id="task-due-date">
+
+                <p class="hint">At least one of Follow-up Date or Due Date is required.</p>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-task">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-task">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Project Modal -->
+    <div class="modal" id="modal-project" style="display:none;">
+        <div class="modal-content">
+            <h3>New Project</h3>
+            <form id="form-project">
+                <label>Project Name</label>
+                <input type="text" id="project-name" required placeholder="Project name">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-project">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reopen Task Modal -->
+    <div class="modal" id="modal-reopen" style="display:none;">
+        <div class="modal-content">
+            <h3>Reopen Task</h3>
+            <form id="form-reopen">
+                <input type="hidden" id="reopen-task-id">
+                <label>Follow-up Date</label>
+                <input type="date" id="reopen-follow-up">
+                <label>Due Date</label>
+                <input type="date" id="reopen-due-date">
+                <p class="hint">At least one date required to reopen.</p>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-reopen">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Reopen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

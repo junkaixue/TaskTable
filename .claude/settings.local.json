@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd /Users/jxue/TaskTable/backend && go mod init tasktable)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(chmod +x /Users/jxue/TaskTable/run.sh)",
+      "Bash(chmod +x /Users/jxue/TaskTable/stop.sh)"
+    ]
+  }
+}
