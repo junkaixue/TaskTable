@@ -28,6 +28,7 @@ type Task struct {
 	DueDate      *string  `json:"due_date"`
 	Priority     int      `json:"priority"`
 	Tags         []string `json:"tags"`
+	URLs         []string `json:"urls"`
 	Status       string   `json:"status"`
 	CreatedAt    string   `json:"created_at"`
 }
@@ -53,6 +54,7 @@ func initDB() {
 		due_date TEXT,
 		priority INTEGER NOT NULL DEFAULT 3,
 		tags TEXT NOT NULL DEFAULT '',
+		urls TEXT NOT NULL DEFAULT '',
 		status TEXT NOT NULL DEFAULT 'pending',
 		created_at TEXT NOT NULL,
 		FOREIGN KEY (project_id) REFERENCES projects(id)
@@ -65,9 +67,10 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Migration: add priority and tags columns if they don't exist
+	// Migration: add columns if they don't exist
 	db.Exec("ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 3")
 	db.Exec("ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
+	db.Exec("ALTER TABLE tasks ADD COLUMN urls TEXT NOT NULL DEFAULT ''")
 }
 
 func cors(next http.HandlerFunc) http.HandlerFunc {
@@ -119,13 +122,14 @@ func stringToTags(s string) []string {
 
 func scanTask(scanner interface{ Scan(...interface{}) error }) (Task, error) {
 	var t Task
-	var tagsStr string
-	err := scanner.Scan(&t.ID, &t.Body, &t.ProjectID, &t.FollowUpDate, &t.DueDate, &t.Priority, &tagsStr, &t.Status, &t.CreatedAt)
+	var tagsStr, urlsStr string
+	err := scanner.Scan(&t.ID, &t.Body, &t.ProjectID, &t.FollowUpDate, &t.DueDate, &t.Priority, &tagsStr, &urlsStr, &t.Status, &t.CreatedAt)
 	t.Tags = stringToTags(tagsStr)
+	t.URLs = stringToTags(urlsStr)
 	return t, err
 }
 
-const taskColumns = "id, body, project_id, follow_up_date, due_date, priority, tags, status, created_at"
+const taskColumns = "id, body, project_id, follow_up_date, due_date, priority, tags, urls, status, created_at"
 
 // Projects handlers
 func getProjects(w http.ResponseWriter, r *http.Request) {
@@ -288,8 +292,8 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 	t.CreatedAt = time.Now().Format(time.RFC3339)
 
 	result, err := db.Exec(
-		"INSERT INTO tasks (body, project_id, follow_up_date, due_date, priority, tags, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		t.Body, t.ProjectID, t.FollowUpDate, t.DueDate, t.Priority, tagsToString(t.Tags), t.Status, t.CreatedAt,
+		"INSERT INTO tasks (body, project_id, follow_up_date, due_date, priority, tags, urls, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		t.Body, t.ProjectID, t.FollowUpDate, t.DueDate, t.Priority, tagsToString(t.Tags), tagsToString(t.URLs), t.Status, t.CreatedAt,
 	)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
@@ -319,8 +323,8 @@ func updateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Exec(
-		"UPDATE tasks SET body = ?, project_id = ?, follow_up_date = ?, due_date = ?, priority = ?, tags = ? WHERE id = ?",
-		t.Body, t.ProjectID, t.FollowUpDate, t.DueDate, t.Priority, tagsToString(t.Tags), id,
+		"UPDATE tasks SET body = ?, project_id = ?, follow_up_date = ?, due_date = ?, priority = ?, tags = ?, urls = ? WHERE id = ?",
+		t.Body, t.ProjectID, t.FollowUpDate, t.DueDate, t.Priority, tagsToString(t.Tags), tagsToString(t.URLs), id,
 	)
 	if err != nil {
 		http.Error(w, err.Error(), 500)

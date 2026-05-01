@@ -10,7 +10,6 @@
     <div class="container">
         <header>
             <h1>TaskTable</h1>
-            <button id="btn-new-task" class="btn btn-primary">+ New Task</button>
         </header>
 
         <section class="section" id="section-today">
@@ -55,6 +54,7 @@
                 <button class="btn btn-small btn-clear-search">Clear</button>
             </div>
             <div class="project-controls">
+                <button id="btn-new-task" class="btn btn-primary">+ New Task</button>
                 <button id="btn-new-project" class="btn btn-small">+ New Project</button>
             </div>
             <div id="pending-tasks"></div>
@@ -108,6 +108,9 @@
 
                 <label>Tags (comma-separated)</label>
                 <input type="text" id="task-tags" placeholder="e.g. bug, frontend, urgent">
+
+                <label>Related URLs (one per line)</label>
+                <textarea id="task-urls" placeholder="Paste URLs here, one per line" rows="3"></textarea>
 
                 <label>Follow-up Date</label>
                 <input type="date" id="task-follow-up">

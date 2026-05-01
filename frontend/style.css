@@ -183,6 +183,28 @@ header h1 {
     border-radius: 10px;
     font-weight: 500;
     color: white;
+    cursor: pointer;
+}
+
+.tag:hover {
+    opacity: 0.75;
+}
+
+.task-urls {
+    margin-top: 4px;
+}
+
+.task-urls a {
+    display: inline-block;
+    font-size: 0.75rem;
+    color: #3498db;
+    margin-right: 10px;
+    word-break: break-all;
+    text-decoration: none;
+}
+
+.task-urls a:hover {
+    text-decoration: underline;
 }
 
 .task-item .task-actions {

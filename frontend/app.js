@@ -87,8 +87,15 @@ function renderTaskItem(task, showDoneBtn) {
     let tagsHtml = '';
     if (task.tags && task.tags.length > 0 && task.tags[0] !== '') {
         tagsHtml = task.tags.map(tag =>
-            `<span class="tag" style="background:${getTagColor(tag)}">${escapeHtml(tag.trim())}</span>`
+            `<span class="tag" style="background:${getTagColor(tag)}" onclick="searchByTag('${escapeHtml(tag.trim())}')">${escapeHtml(tag.trim())}</span>`
         ).join('');
+    }
+
+    let urlsHtml = '';
+    if (task.urls && task.urls.length > 0 && task.urls[0] !== '') {
+        urlsHtml = '<div class="task-urls">' + task.urls.map(url =>
+            `<a href="${escapeHtml(url.trim())}" target="_blank" rel="noopener">${escapeHtml(url.trim())}</a>`
+        ).join('') + '</div>';
     }
 
     const editBtn = `<button class="btn btn-edit" onclick="editTask(${task.id})">Edit</button>`;
@@ -105,6 +112,7 @@ function renderTaskItem(task, showDoneBtn) {
                     ${tagsHtml}
                     <span class="task-dates">${dateHtml}</span>
                 </div>
+                ${urlsHtml}
             </div>
             <div class="task-actions">${actions}</div>
         </div>
@@ -199,6 +207,7 @@ function editTask(id) {
     document.getElementById('task-project').value = task.project_id;
     document.getElementById('task-priority').value = task.priority;
     document.getElementById('task-tags').value = (task.tags && task.tags[0] !== '') ? task.tags.join(', ') : '';
+    document.getElementById('task-urls').value = (task.urls && task.urls[0] !== '') ? task.urls.join('\n') : '';
     document.getElementById('task-follow-up').value = task.follow_up_date || '';
     document.getElementById('task-due-date').value = task.due_date || '';
     document.getElementById('modal-task').style.display = 'flex';
@@ -209,6 +218,17 @@ function showReopen(id) {
     document.getElementById('reopen-follow-up').value = '';
     document.getElementById('reopen-due-date').value = '';
     document.getElementById('modal-reopen').style.display = 'flex';
+}
+
+function searchByTag(tag) {
+    document.querySelectorAll('.search-bar').forEach(bar => {
+        bar.querySelector('.search-q').value = '';
+        bar.querySelector('.search-tag').value = tag;
+        bar.querySelector('.search-priority').value = '';
+        bar.querySelector('.search-from').value = '';
+        bar.querySelector('.search-to').value = '';
+    });
+    Promise.all([loadTodayTasks(), loadPendingTasks(), loadDoneTasks()]);
 }
 
 // Search handlers
@@ -289,11 +309,15 @@ document.getElementById('form-task').addEventListener('submit', async (e) => {
         return;
     }
 
+    const urlsRaw = document.getElementById('task-urls').value.trim();
+    const urls = urlsRaw ? urlsRaw.split('\n').map(u => u.trim()).filter(u => u) : [];
+
     const payload = {
         body: body,
         project_id: projectId,
         priority: priority,
         tags: tags,
+        urls: urls,
         follow_up_date: followUp,
         due_date: dueDate
     };
