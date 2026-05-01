@@ -92,14 +92,29 @@ func tagsToString(tags []string) string {
 	if tags == nil {
 		return ""
 	}
-	return strings.Join(tags, ",")
+	trimmed := make([]string, 0, len(tags))
+	for _, t := range tags {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			trimmed = append(trimmed, t)
+		}
+	}
+	return strings.Join(trimmed, ",")
 }
 
 func stringToTags(s string) []string {
 	if s == "" {
 		return []string{}
 	}
-	return strings.Split(s, ",")
+	parts := strings.Split(s, ",")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 func scanTask(scanner interface{ Scan(...interface{}) error }) (Task, error) {
@@ -156,12 +171,12 @@ func buildSearchConditions(r *http.Request) ([]string, []interface{}) {
 	args := []interface{}{}
 
 	if q := r.URL.Query().Get("q"); q != "" {
-		conditions = append(conditions, "body LIKE ?")
+		conditions = append(conditions, "LOWER(body) LIKE LOWER(?)")
 		args = append(args, "%"+q+"%")
 	}
 	if tag := r.URL.Query().Get("tag"); tag != "" {
-		conditions = append(conditions, "(',' || tags || ',') LIKE ?")
-		args = append(args, "%,"+tag+",%")
+		conditions = append(conditions, "(',' || REPLACE(LOWER(tags), ' ', '') || ',') LIKE LOWER(?)")
+		args = append(args, "%,"+strings.TrimSpace(tag)+",%")
 	}
 	if p := r.URL.Query().Get("priority"); p != "" {
 		if pVal, err := strconv.Atoi(p); err == nil && pVal >= 0 && pVal <= 5 {
