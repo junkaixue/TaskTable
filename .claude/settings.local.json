@@ -14,7 +14,14 @@
       "Bash(lsof -i:3000 2>/dev/null | head -5)",
       "Bash(sqlite3 /Users/jxue/TaskTable/backend/tasktable.db \"SELECT id, body, urls FROM tasks WHERE id=2;\")",
       "Bash(sqlite3 /Users/jxue/TaskTable/backend/tasktable.db \".schema tasks\")",
-      "Bash(cd /Users/jxue/TaskTable && ./run.sh)"
+      "Bash(cd /Users/jxue/TaskTable && ./run.sh)",
+      "Bash(curl -s http://localhost:3000/app.js | grep \"task.status === 'done'\")",
+      "Bash(curl -s 'http://localhost:8080/api/tasks?status=done')",
+      "Bash(curl -s http://localhost:3000/app.js | grep -A3 \"if \\(task.status\")",
+      "Bash(curl -s http://localhost:3000/app.js | grep -B2 -A5 \"showDoneBtn\"  | head -30)",
+      "Bash(curl -s 'http://localhost:8080/api/tasks?status=done' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")",
+      "Bash(curl -s 'http://localhost:8080/api/tasks/today' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")",
+      "Bash(curl -s 'http://localhost:8080/api/tasks?status=pending' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")"
     ]
   }
 }

@@ -76,7 +76,7 @@ function renderTaskItem(task, showDoneBtn) {
         dateHtml += `<span>Follow-up: ${formatDate(task.follow_up_date)}</span> `;
     }
     if (task.due_date) {
-        if (task.status === 'done') {
+        if (!showDoneBtn) {
             dateHtml += `<span>Due: ${formatDate(task.due_date)}</span>`;
         } else {
             const dueTime = new Date(task.due_date + 'T00:00:00').getTime();
