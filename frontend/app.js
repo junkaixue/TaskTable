@@ -76,27 +76,31 @@ function renderTaskItem(task, showDoneBtn) {
         dateHtml += `<span>Follow-up: ${formatDate(task.follow_up_date)}</span> `;
     }
     if (task.due_date) {
-        const dueTime = new Date(task.due_date + 'T00:00:00').getTime();
-        const todayTime = new Date(today + 'T00:00:00').getTime();
-        const daysLeft = Math.ceil((dueTime - todayTime) / 86400000);
-        let cls = '';
-        let daysText = '';
-        if (daysLeft < 0) {
-            cls = 'overdue';
-            daysText = ` (${Math.abs(daysLeft)}d overdue)`;
-        } else if (daysLeft === 0) {
-            cls = 'overdue';
-            daysText = ' (due today)';
-        } else if (daysLeft <= 2) {
-            cls = 'due-urgent';
-            daysText = ` (${daysLeft}d left)`;
-        } else if (daysLeft <= 5) {
-            cls = 'due-soon';
-            daysText = ` (${daysLeft}d left)`;
+        if (task.status === 'done') {
+            dateHtml += `<span>Due: ${formatDate(task.due_date)}</span>`;
         } else {
-            daysText = ` (${daysLeft}d left)`;
+            const dueTime = new Date(task.due_date + 'T00:00:00').getTime();
+            const todayTime = new Date(today + 'T00:00:00').getTime();
+            const daysLeft = Math.ceil((dueTime - todayTime) / 86400000);
+            let cls = '';
+            let daysText = '';
+            if (daysLeft < 0) {
+                cls = 'overdue';
+                daysText = ` (${Math.abs(daysLeft)}d overdue)`;
+            } else if (daysLeft === 0) {
+                cls = 'overdue';
+                daysText = ' (due today)';
+            } else if (daysLeft <= 2) {
+                cls = 'due-urgent';
+                daysText = ` (${daysLeft}d left)`;
+            } else if (daysLeft <= 5) {
+                cls = 'due-soon';
+                daysText = ` (${daysLeft}d left)`;
+            } else {
+                daysText = ` (${daysLeft}d left)`;
+            }
+            dateHtml += `<span class="${cls}">Due: ${formatDate(task.due_date)}${daysText}</span>`;
         }
-        dateHtml += `<span class="${cls}">Due: ${formatDate(task.due_date)}${daysText}</span>`;
     }
 
     const priorityHtml = `<span class="priority-badge priority-${task.priority}">${PRIORITY_LABELS[task.priority]}</span>`;
