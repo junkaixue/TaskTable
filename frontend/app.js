@@ -197,13 +197,33 @@ function renderProjectGroups(container, tasks, showDoneBtn) {
         container.innerHTML = '<p class="empty-message">No tasks found.</p>';
         return;
     }
-    let html = '';
+    let html = '<div class="collapse-all-controls"><button class="btn btn-small btn-collapse-all">Collapse All</button><button class="btn btn-small btn-expand-all">Expand All</button></div>';
     for (const [projectName, projectTasks] of Object.entries(groups)) {
-        html += `<div class="project-group"><h3>${escapeHtml(projectName)}</h3>`;
+        html += `<div class="project-group">`;
+        html += `<h3 class="project-header"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(projectName)}</h3>`;
+        html += `<div class="project-tasks">`;
         html += projectTasks.map(t => renderTaskItem(t, showDoneBtn)).join('');
-        html += '</div>';
+        html += '</div></div>';
     }
     container.innerHTML = html;
+
+    // Toggle individual project groups
+    container.querySelectorAll('.project-header').forEach(header => {
+        header.addEventListener('click', () => {
+            const group = header.closest('.project-group');
+            group.classList.toggle('collapsed');
+        });
+    });
+
+    // Collapse All
+    container.querySelector('.btn-collapse-all').addEventListener('click', () => {
+        container.querySelectorAll('.project-group').forEach(g => g.classList.add('collapsed'));
+    });
+
+    // Expand All
+    container.querySelector('.btn-expand-all').addEventListener('click', () => {
+        container.querySelectorAll('.project-group').forEach(g => g.classList.remove('collapsed'));
+    });
 }
 
 async function loadTodayTasks() {
@@ -438,6 +458,13 @@ document.getElementById('form-reopen').addEventListener('submit', async (e) => {
 
     document.getElementById('modal-reopen').style.display = 'none';
     loadAll();
+});
+
+// Auto-refresh when switching back to this tab
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        loadAll();
+    }
 });
 
 // Initial load
