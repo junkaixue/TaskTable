@@ -21,7 +21,11 @@
       "Bash(curl -s http://localhost:3000/app.js | grep -B2 -A5 \"showDoneBtn\"  | head -30)",
       "Bash(curl -s 'http://localhost:8080/api/tasks?status=done' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")",
       "Bash(curl -s 'http://localhost:8080/api/tasks/today' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")",
-      "Bash(curl -s 'http://localhost:8080/api/tasks?status=pending' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")"
+      "Bash(curl -s 'http://localhost:8080/api/tasks?status=pending' | python3 -c \"import sys,json; [print\\(f\\\\\"{t['id']}: {t['body']} - status:{t['status']} due:{t['due_date']}\\\\\"\\) for t in json.load\\(sys.stdin\\)]\")",
+      "Bash(curl -s http://localhost:8080/api/tasks/delete?id=1 -X DELETE 2>&1)",
+      "Bash(curl -s \"http://localhost:8080/api/tasks/delete?id=999\" -X DELETE 2>&1)",
+      "Bash(cd /Users/jxue/TaskTable && bash run.sh 2>&1)",
+      "Bash(curl -s \"http://localhost:8080/api/tasks/delete?id=999\" -X DELETE && echo \"\" && curl -s \"http://localhost:3000/app.js\" | grep -c \"deleteTask\")"
     ]
   }
 }

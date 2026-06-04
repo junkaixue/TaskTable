@@ -352,6 +352,22 @@ func markDone(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, map[string]string{"status": "ok"})
 }
 
+func deleteTask(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", 400)
+		return
+	}
+
+	_, err = db.Exec("DELETE FROM tasks WHERE id = ?", id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]string{"status": "ok"})
+}
+
 func reopenTask(w http.ResponseWriter, r *http.Request) {
 	idStr := r.URL.Query().Get("id")
 	id, err := strconv.Atoi(idStr)
@@ -423,6 +439,14 @@ func main() {
 	http.HandleFunc("/api/tasks/done", cors(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "PUT" || r.Method == "OPTIONS" {
 			markDone(w, r)
+		} else {
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/tasks/delete", cors(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" || r.Method == "OPTIONS" {
+			deleteTask(w, r)
 		} else {
 			http.Error(w, "Method not allowed", 405)
 		}

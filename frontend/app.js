@@ -2,6 +2,7 @@ const API = 'http://localhost:8080/api';
 
 let projects = [];
 let allTasks = [];
+let deleteMode = false;
 
 const TAG_COLORS = [
     '#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12',
@@ -121,9 +122,10 @@ function renderTaskItem(task, showDoneBtn) {
     }
 
     const editBtn = `<button class="btn btn-edit" onclick="editTask(${task.id})">Edit</button>`;
+    const deleteBtn = deleteMode ? `<button class="btn btn-delete" onclick="deleteTask(${task.id})">Delete</button>` : '';
     const actions = showDoneBtn
-        ? `${editBtn}<button class="btn btn-done" onclick="markDone(${task.id})">Done</button>`
-        : `${editBtn}<button class="btn btn-reopen" onclick="showReopen(${task.id})">Reopen</button>`;
+        ? `${editBtn}<button class="btn btn-done" onclick="markDone(${task.id})">Done</button>${deleteBtn}`
+        : `${editBtn}<button class="btn btn-reopen" onclick="showReopen(${task.id})">Reopen</button>${deleteBtn}`;
 
     return `
         <div class="task-item" data-id="${task.id}">
@@ -133,6 +135,7 @@ function renderTaskItem(task, showDoneBtn) {
                 <div class="task-meta">
                     ${tagsHtml}
                     <span class="task-dates">${dateHtml}</span>
+                    <span class="task-created">Created: ${new Date(task.created_at).toLocaleDateString()}</span>
                 </div>
                 ${urlsHtml}
             </div>
@@ -272,6 +275,12 @@ async function markDone(id) {
     loadAll();
 }
 
+async function deleteTask(id) {
+    if (!confirm('Are you sure you want to delete this task? This cannot be undone.')) return;
+    await fetchJSON(`${API}/tasks/delete?id=${id}`, { method: 'DELETE' });
+    loadAll();
+}
+
 function editTask(id) {
     const task = allTasks.find(t => t.id === id);
     if (!task) return;
@@ -350,6 +359,14 @@ document.querySelectorAll('.search-bar input').forEach(input => {
 
 // Modal handlers
 document.getElementById('btn-add-url').addEventListener('click', () => addUrlRow('', ''));
+
+document.getElementById('btn-delete-mode').addEventListener('click', () => {
+    deleteMode = !deleteMode;
+    const btn = document.getElementById('btn-delete-mode');
+    btn.classList.toggle('active', deleteMode);
+    btn.textContent = deleteMode ? 'Exit Delete Mode' : 'Delete Mode';
+    loadAll();
+});
 
 document.getElementById('btn-new-task').addEventListener('click', () => {
     document.getElementById('modal-task-title').textContent = 'New Task';
@@ -458,6 +475,190 @@ document.getElementById('form-reopen').addEventListener('submit', async (e) => {
 
     document.getElementById('modal-reopen').style.display = 'none';
     loadAll();
+});
+
+// Summarize done tasks
+document.getElementById('btn-summarize').addEventListener('click', () => {
+    const doneTasks = allTasks.filter(t => t.status === 'done');
+    const summaryDiv = document.getElementById('done-summary');
+
+    if (doneTasks.length === 0) {
+        summaryDiv.innerHTML = '<p>No done tasks to summarize.</p>';
+        summaryDiv.style.display = 'block';
+        return;
+    }
+
+    // Group by project
+    const byProject = {};
+    doneTasks.forEach(t => {
+        const name = getProjectName(t.project_id);
+        if (!byProject[name]) byProject[name] = [];
+        byProject[name].push(t);
+    });
+
+    // Collect all tags
+    const tagCounts = {};
+    doneTasks.forEach(t => {
+        if (t.tags && t.tags.length > 0 && t.tags[0] !== '') {
+            t.tags.forEach(tag => {
+                tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+            });
+        }
+    });
+
+    let html = `<h3>Summary (${doneTasks.length} tasks completed)</h3>`;
+
+    // By project
+    html += '<div class="summary-section"><strong>By Project:</strong><ul>';
+    for (const [proj, tasks] of Object.entries(byProject)) {
+        html += `<li>${escapeHtml(proj)}: ${tasks.length} task${tasks.length > 1 ? 's' : ''}</li>`;
+    }
+    html += '</ul></div>';
+
+    // By tag
+    if (Object.keys(tagCounts).length > 0) {
+        html += '<div class="summary-section"><strong>By Tag:</strong><ul>';
+        const sorted = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+        for (const [tag, count] of sorted) {
+            html += `<li><span class="tag" style="background:${getTagColor(tag)}">${escapeHtml(tag)}</span>: ${count}</li>`;
+        }
+        html += '</ul></div>';
+    }
+
+    // Task list
+    html += '<div class="summary-section"><strong>Completed:</strong><ul>';
+    for (const [proj, tasks] of Object.entries(byProject)) {
+        tasks.forEach(t => {
+            html += `<li><em>[${escapeHtml(proj)}]</em> ${escapeHtml(t.body)}</li>`;
+        });
+    }
+    html += '</ul></div>';
+
+    // Performance Review Report (exclude personal tasks)
+    const reviewTasks = doneTasks.filter(t => {
+        if (!t.tags || t.tags.length === 0 || t.tags[0] === '') return true;
+        return !t.tags.some(tag => tag.toLowerCase() === 'personal');
+    });
+
+    const reviewByProject = {};
+    reviewTasks.forEach(t => {
+        const name = getProjectName(t.project_id);
+        if (!reviewByProject[name]) reviewByProject[name] = [];
+        reviewByProject[name].push(t);
+    });
+
+    const reviewTagCounts = {};
+    reviewTasks.forEach(t => {
+        if (t.tags && t.tags.length > 0 && t.tags[0] !== '') {
+            t.tags.forEach(tag => {
+                reviewTagCounts[tag] = (reviewTagCounts[tag] || 0) + 1;
+            });
+        }
+    });
+
+    html += '<div class="summary-section perf-review">';
+    html += '<strong>Performance Review Report</strong>';
+    html += '<div class="perf-review-content">';
+
+    // Determine date range
+    const dates = reviewTasks.map(t => t.created_at.split('T')[0]).sort();
+    const earliest = dates[0];
+    const latest = dates[dates.length - 1];
+    html += `<p><em>Period: ${formatDate(earliest)} – ${formatDate(latest)}</em></p>`;
+
+    // Key accomplishments by project
+    html += '<p><strong>Key Accomplishments:</strong></p><ul>';
+    for (const [proj, tasks] of Object.entries(reviewByProject)) {
+        if (tasks.length >= 3) {
+            html += `<li>Delivered ${tasks.length} tasks for <strong>${escapeHtml(proj)}</strong>, demonstrating consistent output and ownership.</li>`;
+        } else {
+            html += `<li>Completed ${tasks.length} task${tasks.length > 1 ? 's' : ''} for <strong>${escapeHtml(proj)}</strong>.</li>`;
+        }
+    }
+    html += '</ul>';
+
+    // Areas of focus (top tags)
+    if (Object.keys(reviewTagCounts).length > 0) {
+        const topTags = Object.entries(reviewTagCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+        html += '<p><strong>Areas of Focus:</strong></p><ul>';
+        topTags.forEach(([tag, count]) => {
+            html += `<li>${escapeHtml(tag)} – ${count} task${count > 1 ? 's' : ''}</li>`;
+        });
+        html += '</ul>';
+    }
+
+    // Impact metrics
+    const totalProjects = Object.keys(reviewByProject).length;
+    const totalTags = Object.keys(reviewTagCounts).length;
+    const highPriority = reviewTasks.filter(t => t.priority <= 1).length;
+    html += '<p><strong>Impact Metrics:</strong></p><ul>';
+    html += `<li>Total tasks completed: <strong>${reviewTasks.length}</strong></li>`;
+    html += `<li>Projects contributed to: <strong>${totalProjects}</strong></li>`;
+    if (highPriority > 0) {
+        html += `<li>High-priority tasks resolved (P0–P1): <strong>${highPriority}</strong></li>`;
+    }
+    if (totalTags > 0) {
+        html += `<li>Breadth of work (distinct areas): <strong>${totalTags}</strong></li>`;
+    }
+    html += '</ul>';
+
+    // Narrative summary by project
+    html += '<p><strong>Summary of Contributions:</strong></p>';
+    for (const [proj, tasks] of Object.entries(reviewByProject)) {
+        const highP = tasks.filter(t => t.priority <= 1);
+        const taskTags = {};
+        tasks.forEach(t => {
+            if (t.tags && t.tags.length > 0 && t.tags[0] !== '') {
+                t.tags.forEach(tag => { taskTags[tag] = (taskTags[tag] || 0) + 1; });
+            }
+        });
+        const topAreas = Object.entries(taskTags).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([t]) => t);
+
+        let narrative = `<p><strong>${escapeHtml(proj)}</strong>: Completed ${tasks.length} task${tasks.length > 1 ? 's' : ''}`;
+        if (topAreas.length > 0) {
+            narrative += ` spanning ${topAreas.map(t => escapeHtml(t)).join(', ')}`;
+        }
+        narrative += '.';
+        if (highP.length > 0) {
+            narrative += ` Resolved ${highP.length} high-priority item${highP.length > 1 ? 's' : ''} including: ${highP.map(t => escapeHtml(t.body)).join('; ')}.`;
+        }
+        // Summarize the rest as themes rather than listing each
+        const nonHigh = tasks.filter(t => t.priority > 1);
+        if (nonHigh.length > 0) {
+            // Group by first tag to create thematic sentences
+            const themed = {};
+            nonHigh.forEach(t => {
+                const key = (t.tags && t.tags.length > 0 && t.tags[0] !== '') ? t.tags[0] : '_general';
+                if (!themed[key]) themed[key] = [];
+                themed[key].push(t.body);
+            });
+            const themeSentences = [];
+            for (const [theme, bodies] of Object.entries(themed)) {
+                if (theme === '_general') {
+                    if (bodies.length <= 2) {
+                        themeSentences.push(bodies.join('; '));
+                    } else {
+                        themeSentences.push(`${bodies.length} general tasks`);
+                    }
+                } else {
+                    if (bodies.length === 1) {
+                        themeSentences.push(`${escapeHtml(theme)}: ${escapeHtml(bodies[0])}`);
+                    } else {
+                        themeSentences.push(`${bodies.length} tasks in ${escapeHtml(theme)}`);
+                    }
+                }
+            }
+            narrative += ` Additional work: ${themeSentences.join('; ')}.`;
+        }
+        narrative += '</p>';
+        html += narrative;
+    }
+
+    html += '</div></div>';
+
+    html += '<button class="btn btn-small" onclick="document.getElementById(\'done-summary\').style.display=\'none\'">Close</button>';
+    summaryDiv.innerHTML = html;
+    summaryDiv.style.display = 'block';
 });
 
 // Auto-refresh when switching back to this tab

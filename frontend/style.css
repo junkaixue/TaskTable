@@ -186,6 +186,12 @@ header h1 {
     font-weight: bold;
 }
 
+.task-item .task-created {
+    font-size: 0.75rem;
+    color: #bdc3c7;
+    margin-left: 8px;
+}
+
 .priority-badge {
     display: inline-flex;
     align-items: center;
@@ -325,6 +331,72 @@ header h1 {
     background: #f39c12;
     color: white;
     border-radius: 4px;
+}
+
+.btn-delete {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    background: #e74c3c;
+    color: white;
+    border-radius: 4px;
+}
+
+.btn-delete-mode {
+    background: #ecf0f1;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+}
+
+.btn-delete-mode.active {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-summarize {
+    background: #9b59b6;
+    color: white;
+}
+
+.done-summary {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px;
+    margin: 12px 0;
+}
+
+.done-summary h3 {
+    margin: 0 0 12px;
+}
+
+.done-summary ul {
+    margin: 4px 0 12px;
+    padding-left: 20px;
+}
+
+.done-summary li {
+    margin: 4px 0;
+}
+
+.summary-section {
+    margin-bottom: 12px;
+}
+
+.perf-review {
+    background: #fff;
+    border: 2px solid #9b59b6;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.perf-review-content p {
+    margin: 8px 0 4px;
+}
+
+.perf-review-content ul {
+    margin: 4px 0 8px;
+    padding-left: 20px;
 }
 
 .btn-cancel {
