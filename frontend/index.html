@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskTable</title>
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
     <div class="container">
@@ -97,7 +97,10 @@
                 <textarea id="task-body" required placeholder="What needs to be done?"></textarea>
 
                 <label>Project</label>
-                <select id="task-project"></select>
+                <div class="project-select-row">
+                    <select id="task-project"></select>
+                    <button type="button" class="btn btn-small btn-delete-project" id="btn-delete-project" title="Delete the selected project">Delete Project</button>
+                </div>
 
                 <label>Priority (0 = highest, 5 = lowest)</label>
                 <select id="task-priority">
@@ -166,6 +169,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=13"></script>
 </body>
 </html>

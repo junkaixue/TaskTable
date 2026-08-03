@@ -54,7 +54,20 @@ async function loadProjects() {
 
 function populateProjectSelect() {
     const select = document.getElementById('task-project');
-    select.innerHTML = projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    const active = projects.filter(p => !p.deleted);
+    select.innerHTML = active.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+}
+
+async function deleteProject(id) {
+    const proj = projects.find(p => p.id === id);
+    if (!proj) return;
+    if (id === 1) {
+        alert('The Default project cannot be deleted.');
+        return;
+    }
+    if (!confirm(`Delete project "${proj.name}"? Existing tasks keep this project, but you can no longer assign new tasks to it.`)) return;
+    await fetchJSON(`${API}/projects/delete?id=${id}`, { method: 'DELETE' });
+    await loadProjects();
 }
 
 function getProjectName(id) {
@@ -131,7 +144,7 @@ function renderTaskItem(task, showDoneBtn) {
         <div class="task-item" data-id="${task.id}">
             ${priorityHtml}
             <div class="task-content">
-                <div class="task-body">${escapeHtml(task.body)}</div>
+                <div class="task-body">${linkify(task.body)}</div>
                 <div class="task-meta">
                     ${tagsHtml}
                     <span class="task-dates">${dateHtml}</span>
@@ -148,6 +161,12 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function linkify(text) {
+    const escaped = escapeHtml(text);
+    return escaped.replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?')\]])/g,
+        '<a href="$1" target="_blank" rel="noopener">$1</a>');
 }
 
 function parseUrlEntry(entry) {
@@ -194,7 +213,7 @@ function groupByProject(tasks) {
     return groups;
 }
 
-function renderProjectGroups(container, tasks, showDoneBtn) {
+function renderProjectGroups(container, tasks, showDoneBtn, defaultCollapsed) {
     const groups = groupByProject(tasks);
     if (Object.keys(groups).length === 0) {
         container.innerHTML = '<p class="empty-message">No tasks found.</p>';
@@ -202,7 +221,7 @@ function renderProjectGroups(container, tasks, showDoneBtn) {
     }
     let html = '<div class="collapse-all-controls"><button class="btn btn-small btn-collapse-all">Collapse All</button><button class="btn btn-small btn-expand-all">Expand All</button></div>';
     for (const [projectName, projectTasks] of Object.entries(groups)) {
-        html += `<div class="project-group">`;
+        html += `<div class="project-group${defaultCollapsed ? ' collapsed' : ''}">`;
         html += `<h3 class="project-header"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(projectName)}</h3>`;
         html += `<div class="project-tasks">`;
         html += projectTasks.map(t => renderTaskItem(t, showDoneBtn)).join('');
@@ -251,7 +270,7 @@ async function loadPendingTasks() {
 async function loadDoneTasks() {
     const search = buildSearchParams('done');
     const tasks = await fetchJSON(`${API}/tasks?status=done${search}`);
-    renderProjectGroups(document.getElementById('done-tasks'), tasks, false);
+    renderProjectGroups(document.getElementById('done-tasks'), tasks, false, true);
     return tasks;
 }
 
@@ -379,6 +398,12 @@ document.getElementById('btn-new-task').addEventListener('click', () => {
 
 document.getElementById('btn-cancel-task').addEventListener('click', () => {
     document.getElementById('modal-task').style.display = 'none';
+});
+
+document.getElementById('btn-delete-project').addEventListener('click', async () => {
+    const id = parseInt(document.getElementById('task-project').value);
+    if (!id) return;
+    await deleteProject(id);
 });
 
 document.getElementById('btn-new-project').addEventListener('click', () => {
