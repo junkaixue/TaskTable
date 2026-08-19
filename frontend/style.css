@@ -73,26 +73,10 @@ body {
     min-width: 0;
 }
 
-.tree-doc-row {
-    margin-left: 26px;
-    padding: 2px 0;
-}
-
-.tree-doc-row .tree-doc {
-    margin-left: 0;
-    padding: 0;
-}
-
-.tree-doc-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-    margin-top: 2px;
-}
-
-.tree-doc-tags .tag {
+.tree-doc .tag {
     font-size: 0.65rem;
     padding: 1px 6px;
+    flex-shrink: 0;
 }
 
 .tree-project {

@@ -252,18 +252,18 @@ function renderDocsTree() {
                 html += `<div class="tree-empty">No docs</div>`;
             }
             topicDocs.forEach(d => {
-                html += `<div class="tree-doc-row">`;
+                let docTagsHtml = '';
+                if (d.tags && d.tags.length > 0) {
+                    docTagsHtml = d.tags.map(tag =>
+                        `<span class="tag" style="background:${getTagColor(tag)}" onclick="filterDocsByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`
+                    ).join('');
+                }
                 html += `<div class="tree-doc">`;
+                html += docTagsHtml;
                 html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
                 html += `<button class="tree-copy" title="Copy link" onclick="copyDocLink(${d.id}, event)">&#x2398;</button>`;
                 html += `<button class="tree-edit" title="Edit doc" onclick="editDoc(${d.id}, event)">&#9998;</button>`;
                 html += `<button class="tree-delete" title="Delete doc" onclick="deleteDoc(${d.id}, event)">&times;</button>`;
-                html += `</div>`;
-                if (d.tags && d.tags.length > 0) {
-                    html += `<div class="tree-doc-tags">` + d.tags.map(tag =>
-                        `<span class="tag" style="background:${getTagColor(tag)}" onclick="filterDocsByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`
-                    ).join('') + `</div>`;
-                }
                 html += `</div>`;
             });
             html += `</div></div>`;
