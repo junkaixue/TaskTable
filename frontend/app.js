@@ -245,6 +245,7 @@ function renderDocsTree() {
             topicDocs.forEach(d => {
                 html += `<div class="tree-doc">`;
                 html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
+                html += `<button class="tree-copy" title="Copy link" onclick="copyDocLink(${d.id}, event)">&#x2398;</button>`;
                 html += `<button class="tree-edit" title="Edit doc" onclick="editDoc(${d.id}, event)">&#9998;</button>`;
                 html += `<button class="tree-delete" title="Delete doc" onclick="deleteDoc(${d.id}, event)">&times;</button>`;
                 html += `</div>`;
@@ -274,6 +275,35 @@ async function deleteDocTopic(id, event) {
     if (!confirm(`Delete topic "${topic ? topic.name : id}"${count ? ` and its ${count} doc${count > 1 ? 's' : ''}` : ''}?`)) return;
     await fetchJSON(`${API}/doc-topics/delete?id=${id}`, { method: 'DELETE' });
     loadDocsTree();
+}
+
+async function copyDocLink(id, event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+    const doc = docs.find(d => d.id === id);
+    if (!doc) return;
+
+    try {
+        await navigator.clipboard.writeText(doc.url);
+    } catch (err) {
+        // Fallback for contexts where the Clipboard API is unavailable
+        const ta = document.createElement('textarea');
+        ta.value = doc.url;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+
+    const original = btn.innerHTML;
+    btn.innerHTML = '&#10003;';
+    btn.classList.add('copied');
+    setTimeout(() => {
+        btn.innerHTML = original;
+        btn.classList.remove('copied');
+    }, 1200);
 }
 
 function editDoc(id, event) {

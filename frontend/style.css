@@ -136,7 +136,8 @@ body {
 }
 
 .tree-delete,
-.tree-edit {
+.tree-edit,
+.tree-copy {
     background: none;
     border: none;
     color: #bdc3c7;
@@ -149,7 +150,8 @@ body {
 
 .tree-topic-name:hover .tree-delete,
 .tree-doc:hover .tree-delete,
-.tree-doc:hover .tree-edit {
+.tree-doc:hover .tree-edit,
+.tree-doc:hover .tree-copy {
     visibility: visible;
 }
 
@@ -159,6 +161,15 @@ body {
 
 .tree-edit:hover {
     color: #3498db;
+}
+
+.tree-copy:hover {
+    color: #27ae60;
+}
+
+.tree-copy.copied {
+    color: #27ae60;
+    visibility: visible;
 }
 
 @media (max-width: 900px) {
