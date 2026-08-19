@@ -7,18 +7,17 @@ let docTopics = [];
 let docs = [];
 const docsTreeCollapsed = new Set();
 
-const TAG_COLORS = [
-    '#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12',
-    '#1abc9c', '#e67e22', '#2980b9', '#8e44ad', '#16a085',
-    '#d35400', '#c0392b', '#2ecc71', '#3498db', '#e91e63'
-];
-
 function getTagColor(tag) {
     let hash = 0;
     for (let i = 0; i < tag.length; i++) {
         hash = tag.charCodeAt(i) + ((hash << 5) - hash);
     }
-    return TAG_COLORS[Math.abs(hash) % TAG_COLORS.length];
+    // Spread hues with the golden angle so similar tags land far apart,
+    // varying saturation/lightness slightly for extra separation.
+    const hue = Math.abs(hash * 137.508) % 360;
+    const sat = 55 + Math.abs(hash >> 3) % 25;
+    const light = 38 + Math.abs(hash >> 6) % 12;
+    return `hsl(${hue.toFixed(0)}, ${sat}%, ${light}%)`;
 }
 
 async function fetchJSON(url, opts) {
