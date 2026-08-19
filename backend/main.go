@@ -28,10 +28,11 @@ type DocTopic struct {
 }
 
 type Doc struct {
-	ID      int    `json:"id"`
-	TopicID int    `json:"topic_id"`
-	Name    string `json:"name"`
-	URL     string `json:"url"`
+	ID      int      `json:"id"`
+	TopicID int      `json:"topic_id"`
+	Name    string   `json:"name"`
+	URL     string   `json:"url"`
+	Tags    []string `json:"tags"`
 }
 
 type Task struct {
@@ -88,6 +89,7 @@ func initDB() {
 		topic_id INTEGER NOT NULL,
 		name TEXT NOT NULL,
 		url TEXT NOT NULL,
+		tags TEXT NOT NULL DEFAULT '',
 		FOREIGN KEY (topic_id) REFERENCES doc_topics(id)
 	);
 
@@ -103,6 +105,7 @@ func initDB() {
 	db.Exec("ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
 	db.Exec("ALTER TABLE tasks ADD COLUMN urls TEXT NOT NULL DEFAULT ''")
 	db.Exec("ALTER TABLE projects ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+	db.Exec("ALTER TABLE docs ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
 }
 
 func cors(next http.HandlerFunc) http.HandlerFunc {
@@ -284,7 +287,7 @@ func deleteDocTopic(w http.ResponseWriter, r *http.Request) {
 
 // Docs handlers
 func getDocs(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, topic_id, name, url FROM docs ORDER BY topic_id, name")
+	rows, err := db.Query("SELECT id, topic_id, name, url, tags FROM docs ORDER BY topic_id, name")
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -294,7 +297,9 @@ func getDocs(w http.ResponseWriter, r *http.Request) {
 	docs := []Doc{}
 	for rows.Next() {
 		var d Doc
-		rows.Scan(&d.ID, &d.TopicID, &d.Name, &d.URL)
+		var tagsStr string
+		rows.Scan(&d.ID, &d.TopicID, &d.Name, &d.URL, &tagsStr)
+		d.Tags = stringToTags(tagsStr)
 		docs = append(docs, d)
 	}
 	jsonResponse(w, docs)
@@ -317,7 +322,7 @@ func createDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := db.Exec("INSERT INTO docs (topic_id, name, url) VALUES (?, ?, ?)", d.TopicID, d.Name, d.URL)
+	result, err := db.Exec("INSERT INTO docs (topic_id, name, url, tags) VALUES (?, ?, ?, ?)", d.TopicID, d.Name, d.URL, tagsToString(d.Tags))
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -350,7 +355,7 @@ func updateDoc(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := db.Exec("UPDATE docs SET topic_id = ?, name = ?, url = ? WHERE id = ?", d.TopicID, d.Name, d.URL, id); err != nil {
+	if _, err := db.Exec("UPDATE docs SET topic_id = ?, name = ?, url = ?, tags = ? WHERE id = ?", d.TopicID, d.Name, d.URL, tagsToString(d.Tags), id); err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}

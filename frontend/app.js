@@ -216,25 +216,34 @@ async function loadDocsTree() {
     renderDocsTree();
 }
 
+function docMatchesFilter(d, filter) {
+    if (!filter) return true;
+    return (d.tags || []).some(tag => tag.toLowerCase().includes(filter));
+}
+
 function renderDocsTree() {
     const container = document.getElementById('docs-tree');
     const activeProjects = projects.filter(p => !p.deleted);
+    const filter = document.getElementById('docs-tag-filter').value.trim().toLowerCase();
 
     let html = '';
     activeProjects.forEach(p => {
-        const topics = docTopics.filter(t => t.project_id === p.id);
+        let topics = docTopics.filter(t => t.project_id === p.id);
+        if (filter) {
+            topics = topics.filter(t => docs.some(d => d.topic_id === t.id && docMatchesFilter(d, filter)));
+        }
         if (topics.length === 0) return;
 
         const pKey = `p${p.id}`;
-        const pCollapsed = docsTreeCollapsed.has(pKey);
+        const pCollapsed = !filter && docsTreeCollapsed.has(pKey);
         html += `<div class="tree-project${pCollapsed ? ' collapsed' : ''}">`;
         html += `<div class="tree-project-name" data-key="${pKey}"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(p.name)}</div>`;
         html += `<div class="tree-children">`;
 
         topics.forEach(t => {
             const tKey = `t${t.id}`;
-            const tCollapsed = docsTreeCollapsed.has(tKey);
-            const topicDocs = docs.filter(d => d.topic_id === t.id);
+            const tCollapsed = !filter && docsTreeCollapsed.has(tKey);
+            const topicDocs = docs.filter(d => d.topic_id === t.id && docMatchesFilter(d, filter));
             html += `<div class="tree-topic${tCollapsed ? ' collapsed' : ''}">`;
             html += `<div class="tree-topic-name" data-key="${tKey}"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(t.name)}`;
             html += `<button class="tree-delete" title="Delete topic" onclick="deleteDocTopic(${t.id}, event)">&times;</button></div>`;
@@ -243,11 +252,18 @@ function renderDocsTree() {
                 html += `<div class="tree-empty">No docs</div>`;
             }
             topicDocs.forEach(d => {
+                html += `<div class="tree-doc-row">`;
                 html += `<div class="tree-doc">`;
                 html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
                 html += `<button class="tree-copy" title="Copy link" onclick="copyDocLink(${d.id}, event)">&#x2398;</button>`;
                 html += `<button class="tree-edit" title="Edit doc" onclick="editDoc(${d.id}, event)">&#9998;</button>`;
                 html += `<button class="tree-delete" title="Delete doc" onclick="deleteDoc(${d.id}, event)">&times;</button>`;
+                html += `</div>`;
+                if (d.tags && d.tags.length > 0) {
+                    html += `<div class="tree-doc-tags">` + d.tags.map(tag =>
+                        `<span class="tag" style="background:${getTagColor(tag)}" onclick="filterDocsByTag('${escapeHtml(tag)}')">${escapeHtml(tag)}</span>`
+                    ).join('') + `</div>`;
+                }
                 html += `</div>`;
             });
             html += `</div></div>`;
@@ -256,7 +272,10 @@ function renderDocsTree() {
         html += `</div></div>`;
     });
 
-    container.innerHTML = html || '<p class="empty-message">No docs yet. Add a topic to get started.</p>';
+    container.innerHTML = html || (filter
+        ? '<p class="empty-message">No docs match this tag.</p>'
+        : '<p class="empty-message">No docs yet. Add a topic to get started.</p>');
+    document.getElementById('btn-clear-doc-filter').style.display = filter ? '' : 'none';
 
     container.querySelectorAll('.tree-project-name, .tree-topic-name').forEach(el => {
         el.addEventListener('click', () => {
@@ -275,6 +294,11 @@ async function deleteDocTopic(id, event) {
     if (!confirm(`Delete topic "${topic ? topic.name : id}"${count ? ` and its ${count} doc${count > 1 ? 's' : ''}` : ''}?`)) return;
     await fetchJSON(`${API}/doc-topics/delete?id=${id}`, { method: 'DELETE' });
     loadDocsTree();
+}
+
+function filterDocsByTag(tag) {
+    document.getElementById('docs-tag-filter').value = tag;
+    renderDocsTree();
 }
 
 async function copyDocLink(id, event) {
@@ -321,6 +345,7 @@ function editDoc(id, event) {
     document.getElementById('doc-topic').value = doc.topic_id;
     document.getElementById('doc-name').value = doc.name;
     document.getElementById('doc-url').value = doc.url;
+    document.getElementById('doc-tags').value = (doc.tags || []).join(', ');
     document.getElementById('modal-doc').style.display = 'flex';
 }
 
@@ -592,6 +617,13 @@ document.getElementById('btn-new-doc').addEventListener('click', () => {
 
 document.getElementById('doc-project').addEventListener('change', populateDocTopicSelect);
 
+document.getElementById('docs-tag-filter').addEventListener('input', renderDocsTree);
+
+document.getElementById('btn-clear-doc-filter').addEventListener('click', () => {
+    document.getElementById('docs-tag-filter').value = '';
+    renderDocsTree();
+});
+
 document.getElementById('btn-cancel-doc').addEventListener('click', () => {
     document.getElementById('modal-doc').style.display = 'none';
 });
@@ -623,13 +655,15 @@ document.getElementById('form-doc').addEventListener('submit', async (e) => {
     const topicId = parseInt(document.getElementById('doc-topic').value);
     const name = document.getElementById('doc-name').value.trim();
     const url = document.getElementById('doc-url').value.trim();
+    const tagsRaw = document.getElementById('doc-tags').value.trim();
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(t => t) : [];
     if (!topicId) {
         alert('Please pick a topic (create one first if the project has none).');
         return;
     }
     if (!name || !url) return;
 
-    const payload = JSON.stringify({ topic_id: topicId, name, url });
+    const payload = JSON.stringify({ topic_id: topicId, name, url, tags });
     if (editId) {
         await fetchJSON(`${API}/docs/update?id=${editId}`, {
             method: 'PUT',
