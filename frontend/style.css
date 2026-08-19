@@ -12,9 +12,164 @@ body {
 }
 
 .container {
-    max-width: 1100px;
+    max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+}
+
+.layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
+.main-content {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Docs sidebar */
+.docs-sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 20px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.docs-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.docs-header h2 {
+    font-size: 1.05rem;
+    color: #34495e;
+    flex: 1;
+}
+
+.tree-project {
+    margin-bottom: 10px;
+}
+
+.tree-project-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    user-select: none;
+    padding: 3px 0;
+}
+
+.tree-project-name:hover {
+    color: #34495e;
+}
+
+.tree-topic {
+    margin-left: 12px;
+}
+
+.tree-topic-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #2c3e50;
+    cursor: pointer;
+    user-select: none;
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tree-topic-name:hover {
+    color: #3498db;
+}
+
+.tree-project.collapsed > .tree-children,
+.tree-topic.collapsed > .tree-children {
+    display: none;
+}
+
+.tree-project.collapsed .collapse-arrow,
+.tree-topic.collapsed > .tree-topic-name .collapse-arrow {
+    transform: rotate(-90deg);
+}
+
+.tree-doc {
+    margin-left: 26px;
+    padding: 2px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85rem;
+}
+
+.tree-doc a {
+    color: #3498db;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+}
+
+.tree-doc a:hover {
+    text-decoration: underline;
+}
+
+.tree-empty {
+    margin-left: 26px;
+    font-size: 0.75rem;
+    color: #bdc3c7;
+    font-style: italic;
+}
+
+.tree-delete,
+.tree-edit {
+    background: none;
+    border: none;
+    color: #bdc3c7;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0 4px;
+    line-height: 1;
+    visibility: hidden;
+}
+
+.tree-topic-name:hover .tree-delete,
+.tree-doc:hover .tree-delete,
+.tree-doc:hover .tree-edit {
+    visibility: visible;
+}
+
+.tree-delete:hover {
+    color: #e74c3c;
+}
+
+.tree-edit:hover {
+    color: #3498db;
+}
+
+@media (max-width: 900px) {
+    .layout {
+        flex-direction: column;
+    }
+    .docs-sidebar {
+        width: 100%;
+        position: static;
+        max-height: none;
+    }
 }
 
 header {
@@ -339,6 +494,23 @@ header h1 {
     background: #e74c3c;
     color: white;
     border-radius: 4px;
+}
+
+.project-select-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.project-select-row select {
+    flex: 1;
+}
+
+.btn-delete-project {
+    background: #ecf0f1;
+    color: #e74c3c;
+    border: 1px solid #e74c3c;
+    white-space: nowrap;
 }
 
 .btn-delete-mode {

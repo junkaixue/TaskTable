@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TaskTable</title>
-    <link rel="stylesheet" href="style.css?v=10">
+    <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
     <div class="container">
@@ -12,6 +12,17 @@
             <h1>TaskTable</h1>
         </header>
 
+        <div class="layout">
+        <aside class="docs-sidebar" id="docs-sidebar">
+            <div class="docs-header">
+                <h2>Docs</h2>
+                <button id="btn-new-topic" class="btn btn-small" title="Add a topic under a project">+ Topic</button>
+                <button id="btn-new-doc" class="btn btn-small" title="Add a doc under a topic">+ Doc</button>
+            </div>
+            <div id="docs-tree" class="docs-tree"></div>
+        </aside>
+
+        <main class="main-content">
         <section class="section" id="section-today">
             <h2>Today Needs to Handle</h2>
             <div class="search-bar" data-section="today">
@@ -84,6 +95,8 @@
             <div id="done-summary" class="done-summary" style="display:none;"></div>
             <div id="done-tasks"></div>
         </section>
+        </main>
+        </div>
     </div>
 
     <!-- Task Modal (create/edit) -->
@@ -150,6 +163,45 @@
         </div>
     </div>
 
+    <!-- New Topic Modal -->
+    <div class="modal" id="modal-topic" style="display:none;">
+        <div class="modal-content">
+            <h3>New Doc Topic</h3>
+            <form id="form-topic">
+                <label>Project</label>
+                <select id="topic-project"></select>
+                <label>Topic Name</label>
+                <input type="text" id="topic-name" required placeholder="e.g. design, api, onboarding">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-topic">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Topic</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Doc Modal -->
+    <div class="modal" id="modal-doc" style="display:none;">
+        <div class="modal-content">
+            <h3 id="modal-doc-title">New Doc</h3>
+            <form id="form-doc">
+                <input type="hidden" id="doc-edit-id">
+                <label>Project</label>
+                <select id="doc-project"></select>
+                <label>Topic</label>
+                <select id="doc-topic"></select>
+                <label>Doc Name</label>
+                <input type="text" id="doc-name" required placeholder="Doc name">
+                <label>URL</label>
+                <input type="url" id="doc-url" required placeholder="https://...">
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-cancel" id="btn-cancel-doc">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-doc">Add Doc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Reopen Task Modal -->
     <div class="modal" id="modal-reopen" style="display:none;">
         <div class="modal-content">
@@ -169,6 +221,6 @@
         </div>
     </div>
 
-    <script src="app.js?v=13"></script>
+    <script src="app.js?v=16"></script>
 </body>
 </html>

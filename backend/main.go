@@ -16,8 +16,22 @@ import (
 var db *sql.DB
 
 type Project struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID      int    `json:"id"`
+	Name    string `json:"name"`
+	Deleted bool   `json:"deleted"`
+}
+
+type DocTopic struct {
+	ID        int    `json:"id"`
+	ProjectID int    `json:"project_id"`
+	Name      string `json:"name"`
+}
+
+type Doc struct {
+	ID      int    `json:"id"`
+	TopicID int    `json:"topic_id"`
+	Name    string `json:"name"`
+	URL     string `json:"url"`
 }
 
 type Task struct {
@@ -43,7 +57,8 @@ func initDB() {
 	schema := `
 	CREATE TABLE IF NOT EXISTS projects (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		name TEXT NOT NULL UNIQUE
+		name TEXT NOT NULL UNIQUE,
+		deleted INTEGER NOT NULL DEFAULT 0
 	);
 
 	CREATE TABLE IF NOT EXISTS tasks (
@@ -60,6 +75,22 @@ func initDB() {
 		FOREIGN KEY (project_id) REFERENCES projects(id)
 	);
 
+	CREATE TABLE IF NOT EXISTS doc_topics (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		project_id INTEGER NOT NULL,
+		name TEXT NOT NULL,
+		UNIQUE(project_id, name),
+		FOREIGN KEY (project_id) REFERENCES projects(id)
+	);
+
+	CREATE TABLE IF NOT EXISTS docs (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		topic_id INTEGER NOT NULL,
+		name TEXT NOT NULL,
+		url TEXT NOT NULL,
+		FOREIGN KEY (topic_id) REFERENCES doc_topics(id)
+	);
+
 	INSERT OR IGNORE INTO projects (id, name) VALUES (1, 'Default');
 	`
 	_, err = db.Exec(schema)
@@ -71,6 +102,7 @@ func initDB() {
 	db.Exec("ALTER TABLE tasks ADD COLUMN priority INTEGER NOT NULL DEFAULT 3")
 	db.Exec("ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT ''")
 	db.Exec("ALTER TABLE tasks ADD COLUMN urls TEXT NOT NULL DEFAULT ''")
+	db.Exec("ALTER TABLE projects ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
 }
 
 func cors(next http.HandlerFunc) http.HandlerFunc {
@@ -133,7 +165,7 @@ const taskColumns = "id, body, project_id, follow_up_date, due_date, priority, t
 
 // Projects handlers
 func getProjects(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.Query("SELECT id, name FROM projects ORDER BY id")
+	rows, err := db.Query("SELECT id, name, deleted FROM projects ORDER BY id")
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
@@ -143,10 +175,32 @@ func getProjects(w http.ResponseWriter, r *http.Request) {
 	projects := []Project{}
 	for rows.Next() {
 		var p Project
-		rows.Scan(&p.ID, &p.Name)
+		rows.Scan(&p.ID, &p.Name, &p.Deleted)
 		projects = append(projects, p)
 	}
 	jsonResponse(w, projects)
+}
+
+// deleteProject soft-deletes a project so it no longer appears when creating
+// tasks, while preserving the project name for existing (including done) tasks.
+func deleteProject(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid project ID", 400)
+		return
+	}
+	if id == 1 {
+		http.Error(w, "The Default project cannot be deleted", 400)
+		return
+	}
+
+	_, err = db.Exec("UPDATE projects SET deleted = 1 WHERE id = ?", id)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]string{"status": "ok"})
 }
 
 func createProject(w http.ResponseWriter, r *http.Request) {
@@ -168,6 +222,153 @@ func createProject(w http.ResponseWriter, r *http.Request) {
 	id, _ := result.LastInsertId()
 	p.ID = int(id)
 	jsonResponse(w, p)
+}
+
+// Doc topics handlers
+func getDocTopics(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT id, project_id, name FROM doc_topics ORDER BY project_id, name")
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	defer rows.Close()
+
+	topics := []DocTopic{}
+	for rows.Next() {
+		var t DocTopic
+		rows.Scan(&t.ID, &t.ProjectID, &t.Name)
+		topics = append(topics, t)
+	}
+	jsonResponse(w, topics)
+}
+
+func createDocTopic(w http.ResponseWriter, r *http.Request) {
+	var t DocTopic
+	if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		http.Error(w, "Invalid request body", 400)
+		return
+	}
+	t.Name = strings.TrimSpace(t.Name)
+	if t.Name == "" {
+		http.Error(w, "Topic name is required", 400)
+		return
+	}
+	if t.ProjectID == 0 {
+		http.Error(w, "Project is required", 400)
+		return
+	}
+
+	result, err := db.Exec("INSERT INTO doc_topics (project_id, name) VALUES (?, ?)", t.ProjectID, t.Name)
+	if err != nil {
+		http.Error(w, "Topic already exists under this project", 409)
+		return
+	}
+	id, _ := result.LastInsertId()
+	t.ID = int(id)
+	jsonResponse(w, t)
+}
+
+func deleteDocTopic(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, "Invalid topic ID", 400)
+		return
+	}
+	db.Exec("DELETE FROM docs WHERE topic_id = ?", id)
+	if _, err := db.Exec("DELETE FROM doc_topics WHERE id = ?", id); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]string{"status": "ok"})
+}
+
+// Docs handlers
+func getDocs(w http.ResponseWriter, r *http.Request) {
+	rows, err := db.Query("SELECT id, topic_id, name, url FROM docs ORDER BY topic_id, name")
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	defer rows.Close()
+
+	docs := []Doc{}
+	for rows.Next() {
+		var d Doc
+		rows.Scan(&d.ID, &d.TopicID, &d.Name, &d.URL)
+		docs = append(docs, d)
+	}
+	jsonResponse(w, docs)
+}
+
+func createDoc(w http.ResponseWriter, r *http.Request) {
+	var d Doc
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+		http.Error(w, "Invalid request body", 400)
+		return
+	}
+	d.Name = strings.TrimSpace(d.Name)
+	d.URL = strings.TrimSpace(d.URL)
+	if d.Name == "" || d.URL == "" {
+		http.Error(w, "Doc name and URL are required", 400)
+		return
+	}
+	if d.TopicID == 0 {
+		http.Error(w, "Topic is required", 400)
+		return
+	}
+
+	result, err := db.Exec("INSERT INTO docs (topic_id, name, url) VALUES (?, ?, ?)", d.TopicID, d.Name, d.URL)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	id, _ := result.LastInsertId()
+	d.ID = int(id)
+	jsonResponse(w, d)
+}
+
+func updateDoc(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, "Invalid doc ID", 400)
+		return
+	}
+
+	var d Doc
+	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+		http.Error(w, "Invalid request body", 400)
+		return
+	}
+	d.Name = strings.TrimSpace(d.Name)
+	d.URL = strings.TrimSpace(d.URL)
+	if d.Name == "" || d.URL == "" {
+		http.Error(w, "Doc name and URL are required", 400)
+		return
+	}
+	if d.TopicID == 0 {
+		http.Error(w, "Topic is required", 400)
+		return
+	}
+
+	if _, err := db.Exec("UPDATE docs SET topic_id = ?, name = ?, url = ? WHERE id = ?", d.TopicID, d.Name, d.URL, id); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	d.ID = id
+	jsonResponse(w, d)
+}
+
+func deleteDoc(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("id"))
+	if err != nil {
+		http.Error(w, "Invalid doc ID", 400)
+		return
+	}
+	if _, err := db.Exec("DELETE FROM docs WHERE id = ?", id); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+	jsonResponse(w, map[string]string{"status": "ok"})
 }
 
 func buildSearchConditions(r *http.Request) ([]string, []interface{}) {
@@ -413,6 +614,14 @@ func main() {
 		}
 	}))
 
+	http.HandleFunc("/api/projects/delete", cors(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" || r.Method == "OPTIONS" {
+			deleteProject(w, r)
+		} else {
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
 	http.HandleFunc("/api/tasks", cors(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -455,6 +664,52 @@ func main() {
 	http.HandleFunc("/api/tasks/reopen", cors(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "PUT" || r.Method == "OPTIONS" {
 			reopenTask(w, r)
+		} else {
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/doc-topics", cors(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			getDocTopics(w, r)
+		case "POST":
+			createDocTopic(w, r)
+		default:
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/doc-topics/delete", cors(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" || r.Method == "OPTIONS" {
+			deleteDocTopic(w, r)
+		} else {
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/docs", cors(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			getDocs(w, r)
+		case "POST":
+			createDoc(w, r)
+		default:
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/docs/update", cors(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "PUT" || r.Method == "OPTIONS" {
+			updateDoc(w, r)
+		} else {
+			http.Error(w, "Method not allowed", 405)
+		}
+	}))
+
+	http.HandleFunc("/api/docs/delete", cors(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" || r.Method == "OPTIONS" {
+			deleteDoc(w, r)
 		} else {
 			http.Error(w, "Method not allowed", 405)
 		}

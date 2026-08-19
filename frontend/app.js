@@ -3,6 +3,9 @@ const API = 'http://localhost:8080/api';
 let projects = [];
 let allTasks = [];
 let deleteMode = false;
+let docTopics = [];
+let docs = [];
+const docsTreeCollapsed = new Set();
 
 const TAG_COLORS = [
     '#e74c3c', '#3498db', '#27ae60', '#9b59b6', '#f39c12',
@@ -203,6 +206,119 @@ function getUrlEntries() {
     return entries;
 }
 
+// --- Docs sidebar (tree: project > topic > doc) ---
+
+async function loadDocsTree() {
+    [docTopics, docs] = await Promise.all([
+        fetchJSON(`${API}/doc-topics`),
+        fetchJSON(`${API}/docs`)
+    ]);
+    renderDocsTree();
+}
+
+function renderDocsTree() {
+    const container = document.getElementById('docs-tree');
+    const activeProjects = projects.filter(p => !p.deleted);
+
+    let html = '';
+    activeProjects.forEach(p => {
+        const topics = docTopics.filter(t => t.project_id === p.id);
+        if (topics.length === 0) return;
+
+        const pKey = `p${p.id}`;
+        const pCollapsed = docsTreeCollapsed.has(pKey);
+        html += `<div class="tree-project${pCollapsed ? ' collapsed' : ''}">`;
+        html += `<div class="tree-project-name" data-key="${pKey}"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(p.name)}</div>`;
+        html += `<div class="tree-children">`;
+
+        topics.forEach(t => {
+            const tKey = `t${t.id}`;
+            const tCollapsed = docsTreeCollapsed.has(tKey);
+            const topicDocs = docs.filter(d => d.topic_id === t.id);
+            html += `<div class="tree-topic${tCollapsed ? ' collapsed' : ''}">`;
+            html += `<div class="tree-topic-name" data-key="${tKey}"><span class="collapse-arrow">&#9660;</span> ${escapeHtml(t.name)}`;
+            html += `<button class="tree-delete" title="Delete topic" onclick="deleteDocTopic(${t.id}, event)">&times;</button></div>`;
+            html += `<div class="tree-children">`;
+            if (topicDocs.length === 0) {
+                html += `<div class="tree-empty">No docs</div>`;
+            }
+            topicDocs.forEach(d => {
+                html += `<div class="tree-doc">`;
+                html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
+                html += `<button class="tree-edit" title="Edit doc" onclick="editDoc(${d.id}, event)">&#9998;</button>`;
+                html += `<button class="tree-delete" title="Delete doc" onclick="deleteDoc(${d.id}, event)">&times;</button>`;
+                html += `</div>`;
+            });
+            html += `</div></div>`;
+        });
+
+        html += `</div></div>`;
+    });
+
+    container.innerHTML = html || '<p class="empty-message">No docs yet. Add a topic to get started.</p>';
+
+    container.querySelectorAll('.tree-project-name, .tree-topic-name').forEach(el => {
+        el.addEventListener('click', () => {
+            const key = el.dataset.key;
+            if (docsTreeCollapsed.has(key)) docsTreeCollapsed.delete(key);
+            else docsTreeCollapsed.add(key);
+            el.parentElement.classList.toggle('collapsed');
+        });
+    });
+}
+
+async function deleteDocTopic(id, event) {
+    event.stopPropagation();
+    const topic = docTopics.find(t => t.id === id);
+    const count = docs.filter(d => d.topic_id === id).length;
+    if (!confirm(`Delete topic "${topic ? topic.name : id}"${count ? ` and its ${count} doc${count > 1 ? 's' : ''}` : ''}?`)) return;
+    await fetchJSON(`${API}/doc-topics/delete?id=${id}`, { method: 'DELETE' });
+    loadDocsTree();
+}
+
+function editDoc(id, event) {
+    event.stopPropagation();
+    const doc = docs.find(d => d.id === id);
+    if (!doc) return;
+    const topic = docTopics.find(t => t.id === doc.topic_id);
+
+    document.getElementById('modal-doc-title').textContent = 'Edit Doc';
+    document.getElementById('btn-submit-doc').textContent = 'Update Doc';
+    document.getElementById('doc-edit-id').value = id;
+    populateDocProjectSelect('doc-project', true);
+    if (topic) document.getElementById('doc-project').value = topic.project_id;
+    populateDocTopicSelect();
+    document.getElementById('doc-topic').value = doc.topic_id;
+    document.getElementById('doc-name').value = doc.name;
+    document.getElementById('doc-url').value = doc.url;
+    document.getElementById('modal-doc').style.display = 'flex';
+}
+
+async function deleteDoc(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this doc link?')) return;
+    await fetchJSON(`${API}/docs/delete?id=${id}`, { method: 'DELETE' });
+    loadDocsTree();
+}
+
+function populateDocProjectSelect(selectId, onlyWithTopics) {
+    const select = document.getElementById(selectId);
+    let active = projects.filter(p => !p.deleted);
+    if (onlyWithTopics) {
+        active = active.filter(p => docTopics.some(t => t.project_id === p.id));
+    }
+    select.innerHTML = active.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+}
+
+function populateDocTopicSelect() {
+    const projectId = parseInt(document.getElementById('doc-project').value);
+    const select = document.getElementById('doc-topic');
+    const topics = docTopics.filter(t => t.project_id === projectId);
+    select.innerHTML = topics.length
+        ? topics.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('')
+        : '<option value="">No topics — create one first</option>';
+}
+
 function groupByProject(tasks) {
     const groups = {};
     tasks.forEach(t => {
@@ -277,7 +393,7 @@ async function loadDoneTasks() {
 async function loadAll() {
     await loadProjects();
     const [todayTasks, pendingTasks, doneTasks] = await Promise.all([
-        loadTodayTasks(), loadPendingTasks(), loadDoneTasks()
+        loadTodayTasks(), loadPendingTasks(), loadDoneTasks(), loadDocsTree()
     ]);
     allTasks = [...todayTasks, ...pendingTasks, ...doneTasks];
     // Deduplicate by id
@@ -417,6 +533,89 @@ document.getElementById('btn-cancel-project').addEventListener('click', () => {
 
 document.getElementById('btn-cancel-reopen').addEventListener('click', () => {
     document.getElementById('modal-reopen').style.display = 'none';
+});
+
+// Docs modals
+document.getElementById('btn-new-topic').addEventListener('click', () => {
+    document.getElementById('form-topic').reset();
+    populateDocProjectSelect('topic-project');
+    document.getElementById('modal-topic').style.display = 'flex';
+});
+
+document.getElementById('btn-cancel-topic').addEventListener('click', () => {
+    document.getElementById('modal-topic').style.display = 'none';
+});
+
+document.getElementById('btn-new-doc').addEventListener('click', () => {
+    if (docTopics.length === 0) {
+        alert('Create a topic first (+ Topic).');
+        return;
+    }
+    document.getElementById('form-doc').reset();
+    document.getElementById('modal-doc-title').textContent = 'New Doc';
+    document.getElementById('btn-submit-doc').textContent = 'Add Doc';
+    document.getElementById('doc-edit-id').value = '';
+    populateDocProjectSelect('doc-project', true);
+    populateDocTopicSelect();
+    document.getElementById('modal-doc').style.display = 'flex';
+});
+
+document.getElementById('doc-project').addEventListener('change', populateDocTopicSelect);
+
+document.getElementById('btn-cancel-doc').addEventListener('click', () => {
+    document.getElementById('modal-doc').style.display = 'none';
+});
+
+document.getElementById('form-topic').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const projectId = parseInt(document.getElementById('topic-project').value);
+    const name = document.getElementById('topic-name').value.trim();
+    if (!name || !projectId) return;
+
+    try {
+        await fetchJSON(`${API}/doc-topics`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_id: projectId, name })
+        });
+    } catch (err) {
+        alert(err.message);
+        return;
+    }
+
+    document.getElementById('modal-topic').style.display = 'none';
+    loadDocsTree();
+});
+
+document.getElementById('form-doc').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const editId = document.getElementById('doc-edit-id').value;
+    const topicId = parseInt(document.getElementById('doc-topic').value);
+    const name = document.getElementById('doc-name').value.trim();
+    const url = document.getElementById('doc-url').value.trim();
+    if (!topicId) {
+        alert('Please pick a topic (create one first if the project has none).');
+        return;
+    }
+    if (!name || !url) return;
+
+    const payload = JSON.stringify({ topic_id: topicId, name, url });
+    if (editId) {
+        await fetchJSON(`${API}/docs/update?id=${editId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+        });
+    } else {
+        await fetchJSON(`${API}/docs`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload
+        });
+    }
+
+    document.getElementById('modal-doc').style.display = 'none';
+    loadDocsTree();
 });
 
 // Form submissions
