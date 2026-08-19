@@ -1,0 +1,12 @@
+# Runtime data
+backend/tasktable.db
+backend/tasktable
+.pids
+*.log
+
+# Local tool config
+.claude/settings.local.json
+.idea/
+
+# OS
+.DS_Store
