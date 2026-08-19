@@ -259,7 +259,7 @@ function renderDocsTree() {
                 }
                 html += `<div class="tree-doc">`;
                 html += docTagsHtml;
-                html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
+                html += `<a href="${escapeHtml(d.url)}" target="_blank" rel="noopener" title="${escapeHtml(d.name)}&#10;${escapeHtml(d.url)}">${escapeHtml(d.name)}</a>`;
                 html += `<button class="tree-copy" title="Copy link" onclick="copyDocLink(${d.id}, event)">&#x2398;</button>`;
                 html += `<button class="tree-edit" title="Edit doc" onclick="editDoc(${d.id}, event)">&#9998;</button>`;
                 html += `<button class="tree-delete" title="Delete doc" onclick="deleteDoc(${d.id}, event)">&times;</button>`;
