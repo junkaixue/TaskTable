@@ -948,6 +948,40 @@ document.getElementById('btn-summarize').addEventListener('click', () => {
     summaryDiv.style.display = 'block';
 });
 
+// Docs sidebar resizer
+(function () {
+    const sidebar = document.getElementById('docs-sidebar');
+    const resizer = document.getElementById('sidebar-resizer');
+    const MIN_W = 200, MAX_W = 600;
+
+    const saved = parseInt(localStorage.getItem('docsSidebarWidth'));
+    if (saved >= MIN_W && saved <= MAX_W) {
+        sidebar.style.width = saved + 'px';
+    }
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = sidebar.getBoundingClientRect().width;
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+
+        function onMove(ev) {
+            const w = Math.min(MAX_W, Math.max(MIN_W, startWidth + (ev.clientX - startX)));
+            sidebar.style.width = w + 'px';
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            localStorage.setItem('docsSidebarWidth', Math.round(sidebar.getBoundingClientRect().width));
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+})();
+
 // Auto-refresh when switching back to this tab
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
