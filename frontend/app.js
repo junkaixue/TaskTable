@@ -948,27 +948,39 @@ document.getElementById('btn-summarize').addEventListener('click', () => {
     summaryDiv.style.display = 'block';
 });
 
-// Docs sidebar resizer
+// Docs sidebar resizer: grows leftward into the empty page margin,
+// keeping the sidebar's footprint in the layout (and the main content
+// width) unchanged. Extra width becomes a negative left margin.
 (function () {
     const sidebar = document.getElementById('docs-sidebar');
     const resizer = document.getElementById('sidebar-resizer');
-    const MIN_W = 200, MAX_W = 600;
+    const BASE_W = 320, MIN_W = 200;
+
+    function applyWidth(w) {
+        sidebar.style.width = w + 'px';
+        sidebar.style.marginLeft = -Math.max(0, w - BASE_W) + 'px';
+    }
 
     const saved = parseInt(localStorage.getItem('docsSidebarWidth'));
-    if (saved >= MIN_W && saved <= MAX_W) {
-        sidebar.style.width = saved + 'px';
+    if (saved >= MIN_W) {
+        const availLeft = sidebar.getBoundingClientRect().left - 8;
+        applyWidth(Math.min(saved, BASE_W + Math.max(0, availLeft)));
     }
 
     resizer.addEventListener('mousedown', (e) => {
         e.preventDefault();
         const startX = e.clientX;
-        const startWidth = sidebar.getBoundingClientRect().width;
+        const rect = sidebar.getBoundingClientRect();
+        const startWidth = rect.width;
+        // Don't let the left edge go past the viewport edge (8px gap)
+        const maxW = startWidth + rect.left - 8;
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
 
         function onMove(ev) {
-            const w = Math.min(MAX_W, Math.max(MIN_W, startWidth + (ev.clientX - startX)));
-            sidebar.style.width = w + 'px';
+            // Handle is on the left edge: dragging left widens
+            const w = Math.min(maxW, Math.max(MIN_W, startWidth - (ev.clientX - startX)));
+            applyWidth(w);
         }
         function onUp() {
             document.removeEventListener('mousemove', onMove);
