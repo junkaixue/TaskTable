@@ -546,6 +546,16 @@ document.querySelectorAll('.search-bar input').forEach(input => {
     });
 });
 
+// Follow-up date and due date are mutually exclusive: picking one clears the other
+function makeDatesExclusive(idA, idB) {
+    const a = document.getElementById(idA);
+    const b = document.getElementById(idB);
+    a.addEventListener('change', () => { if (a.value) b.value = ''; });
+    b.addEventListener('change', () => { if (b.value) a.value = ''; });
+}
+makeDatesExclusive('task-follow-up', 'task-due-date');
+makeDatesExclusive('reopen-follow-up', 'reopen-due-date');
+
 // Modal handlers
 document.getElementById('btn-add-url').addEventListener('click', () => addUrlRow('', ''));
 
